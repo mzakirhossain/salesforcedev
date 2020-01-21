@@ -1,63 +1,110 @@
 public with sharing class ImpcsvQuoteLIController {
 
- public class WCcsvQL{
+ public class WCcsvQL{ //wrapper/container class
         @AuraEnabled public String ITEM_PART_ID {get;set;}
         @AuraEnabled public String ITEM_DESC {get;set;}
         @AuraEnabled public String ITEM_QTY {get;set;}
         @AuraEnabled public String ITEM_UNIT {get;set;}
         @AuraEnabled public String SELL {get;set;}
         @AuraEnabled public String STATUS {get;set;}
+        @AuraEnabled public String Product2Id {get;set;}
     }
     @AuraEnabled
-    public static list<WCcsvQL> processCSVFile(Id idContentDocument){
-        list<WCcsvQL> lstcsvQL = new list<WCcsvQL>();
+    public static list<WCcsvQL> processCSVFile(Id idContentDocument,Id recordId,String isimportcsv){
+        list<WCcsvQL> wclstcsvQL = new list<WCcsvQL>();
 
-        try{          
-        if(idContentDocument != null) {
-            // getting File Data based on document id 
-            ContentVersion objVersion = [SELECT Id, VersionData FROM ContentVersion WHERE ContentDocumentId =:idContentDocument];
-            // split the file data
-            list<String> lstCSVLines = objVersion.VersionData.toString().split('\n');
-                // System.debug('csvRowData====> '+objVersion);
+        try{         
+        if(isimportcsv=='true'){
+                System.debug('csvRowData true ===> '+idContentDocument+' recordId '+recordId+'-'+isimportcsv);
 
-            for(Integer i = 1; i < lstCSVLines.size(); i++){
-                WCcsvQL objCsvQL = new WCcsvQL();
+            if(idContentDocument != null) {
+                // getting File Data based on document id 
+                ContentVersion objVersion = [SELECT Id, VersionData FROM ContentVersion WHERE ContentDocumentId =:idContentDocument];
+                // split the file data
+                list<String> lstCSVLines = objVersion.VersionData.toString().split('\n');
 
-                list<String> csvRowData = lstCSVLines[i].split(',');
-                // System.debug('csvRowData====> '+csvRowData);
-                objCsvQL.ITEM_PART_ID = csvRowData[1];
-                objCsvQL.ITEM_DESC = csvRowData[2];
-                objCsvQL.ITEM_QTY = csvRowData[3];
-                objCsvQL.ITEM_UNIT = csvRowData[4];
-                objCsvQL.SELL = csvRowData[10];
-                
-                    try {
-                        String Product2 = [select id from Product2 where Vendor_Part__c =: csvRowData[1]].Id;
-                            if (!String.isBlank(Product2)){
-                                objCsvQL.STATUS = 'Matched';
-                            }else {
-                                objCsvQL.STATUS = 'No Product Found';
-                            }
-                        } catch (Exception ex) {
-                            objCsvQL.STATUS = 'No Product Found';
-                        }
-                // String Pricebook2 = [Select Id From Pricebook2 Where Name =: 'Standard Price Book'].Id;
-                // quotelineitemObj.Product2Id = Product2;
-                // quotelineitemObj.QuoteId = recordId;
-                lstcsvQL.add(objCsvQL);
-            }
-                if(!lstcsvQL.isEmpty()) {
-                    // insert lstAccsToInsert;
-                    deleteContent(idContentDocument);
+                for(Integer i = 1; i < lstCSVLines.size(); i++){
+                    WCcsvQL objCsvQL = new WCcsvQL();
+
+                    list<String> csvRowData = lstCSVLines[i].split(',');
+                    if (!csvRowData.isEmpty()) {
+
+                        objCsvQL.ITEM_PART_ID = csvRowData[1];
+                        objCsvQL.ITEM_DESC = csvRowData[2];
+                        objCsvQL.ITEM_QTY = csvRowData[3];
+                        objCsvQL.ITEM_UNIT = csvRowData[4];
+                        objCsvQL.SELL = csvRowData[10];
+                        
+                            try {
+                                String Product2 = [select id from Product2 where Vendor_Part__c =: csvRowData[1]].Id;
+                                String PricebookEntryId = [select id from PricebookEntry where Product2Id =: Product2].Id;                                        
+
+                                    if (!String.isBlank(Product2) && !String.isBlank(PricebookEntryId)){                                    
+                                        objCsvQL.STATUS = 'Matched';
+                                        objCsvQL.Product2Id = Product2;
+
+                                    }else {
+                                        objCsvQL.STATUS = 'No Product Found';
+                                    }
+                                } catch (Exception ex) {
+                                    objCsvQL.STATUS = 'No Product Found';
+                                }
+                        wclstcsvQL.add(objCsvQL);
+                    }
                 }
+                    // if(!wclstcsvQL.isEmpty()) {
+                    //     deleteContent(idContentDocument);
+                    // }
+                }
+            }        
+            else if(isimportcsv=='false'){  
+                System.debug('csvRowData false ===> '+idContentDocument+' recordId '+recordId+'-'+isimportcsv);
+
+                SaveProductsQuote(idContentDocument,recordId);
             }
-        }
+        }    
         catch (Exception ex) {
                 throw new AuraHandledException(ex.getMessage());
         }                     
-        return lstcsvQL;            
+        return wclstcsvQL;            
     }
+    public static void SaveProductsQuote(Id idContentDocument,Id recordId){
+        list<QuoteLineItem> lstQL = new list<QuoteLineItem>();
 
+        if(idContentDocument != null && recordId != null ) {
+                // getting File Data based on document id 
+                ContentVersion objVersion = [SELECT Id, VersionData FROM ContentVersion WHERE ContentDocumentId =:idContentDocument];
+                // split the file data
+                list<String> lstCSVLines = objVersion.VersionData.toString().split('\n');
+
+                for(Integer i = 1; i < lstCSVLines.size(); i++){
+                    QuoteLineItem quotelineitemObj = new QuoteLineItem() ;
+
+                    list<String> csvRowData = lstCSVLines[i].split(',');
+                    if (!csvRowData.isEmpty()) {
+                            try {
+                                String Product2 = [select id from Product2 where Vendor_Part__c =: csvRowData[1]].Id;
+                                    if (!String.isBlank(Product2)){                                    
+
+                                        quotelineitemObj.Quantity = Decimal.valueOf(csvRowData[3]);
+                                        quotelineitemObj.QuoteId = recordId;
+                                        quotelineitemObj.UnitPrice = Decimal.valueOf(csvRowData[10]);
+
+                                        quotelineitemObj.Product2Id = Product2;
+                                        quotelineitemObj.PricebookEntryId = [select id from PricebookEntry where Product2Id =: Product2].Id;                                        
+
+                                        lstQL.add(quotelineitemObj);
+
+                                    }
+                                } catch (Exception ex) {    
+                                    System.debug('Exception while adding product in QL list: '+ex.getMessage());
+                                }
+                    }
+                }
+                    upsert lstQL;
+        }
+        // return '';
+    }
 
     public static void deleteContent(Id idContentDocument){
 

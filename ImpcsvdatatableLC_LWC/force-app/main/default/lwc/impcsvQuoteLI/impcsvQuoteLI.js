@@ -1,7 +1,8 @@
 import { LightningElement, track, api } from 'lwc';
 import {ShowToastEvent} from 'lightning/platformShowToastEvent';
 import processCSVFile from '@salesforce/apex/ImpcsvQuoteLIController.processCSVFile';
- /* eslint-disable no-console */
+
+/* eslint-disable no-console */
  /* eslint-disable no-alert */
 
 const columns = [
@@ -26,9 +27,11 @@ export default class ImpcsvQuoteLI extends LightningElement {
     get acceptedFormats() {
         return ['.csv'];
     }
-    @track isSaveButtonShow;
-    @track isRetryButtonShow;
-    @track isSaveIgnoreButtonShow;
+    @track isSaveButton;
+    @track isRetryButton;
+    @track isSaveIgnoreButton;
+
+    @api documentId;
 
     JsUploadFinished(event) {
         
@@ -38,7 +41,9 @@ export default class ImpcsvQuoteLI extends LightningElement {
         const uploadedFiles = event.detail.files;
 
         // calling apex class
-        processCSVFile({idContentDocument : uploadedFiles[0].documentId})
+        this.documentId=uploadedFiles[0].documentId;
+
+        processCSVFile({idContentDocument : this.documentId, recordId: this.recordId, isimportcsv : "true"})
         .then(result => {
             // window.console.log('dataresult ===> '+JSON.stringify(result));
             this.data = result;
@@ -51,26 +56,26 @@ export default class ImpcsvQuoteLI extends LightningElement {
             // window.console.log('dataresult obj length===> '+Object.entries(objSearch).length);
 
             if(typeof objSearch != "undefined" && Object.entries(objSearch).length > 0){
-                this.isRetryButtonShow="true";
-                this.isSaveIgnoreButtonShow="true";
+                this.isRetryButton="true";
+                this.isSaveIgnoreButton="true";
                 this.dispatchEvent(
                     new ShowToastEvent({
                         title: 'Warning, Some products are not MATCHED!!',
-                        message: 'Products uploaded but some are not MATCHED with product list, please Retry or Save with ignore those products.!!',
+                        message: 'Please Retry or Save with ignore those products.!!',
                         variant: 'warning',
-                        mode:'sticky',
+                        // mode:'sticky',
                     }),
                 );     
             }
 
             if(typeof objSearch === "undefined"){
-                this.isSaveButtonShow="true";
+                this.isSaveButton="true";
                 this.dispatchEvent(
                     new ShowToastEvent({
                         title: 'Success!!',
                         message: 'All Products are uploaded successfully, please review and save to Quote!!!',
                         variant: 'success',
-                        mode:'sticky',
+                        // mode:'sticky',
                     }),
                 );
             }
@@ -80,12 +85,43 @@ export default class ImpcsvQuoteLI extends LightningElement {
             this.dispatchEvent(
                 new ShowToastEvent({
                     title: 'Error to uploaded Products!!',
-                    message: JSON.stringify(error),
+                    message: (error),
                     variant: 'error',
-                    mode:'sticky',
+                    // mode:'sticky',
                 }),
             );     
         })
+    }
+        
+    SaveProductsQuoteJS(event) {
+        // calling apex class
+        processCSVFile({idContentDocument : this.documentId, recordId: this.recordId, isimportcsv : "false"})
+        .then(result => {
+            this.isRetryButton="";
+            this.isSaveIgnoreButton="";
+            this.isSaveButton="";
+
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Success!!',
+                    message: 'Products are Saved successfully in QL!!!',
+                    variant: 'success',
+                    // mode:'sticky',
+                }),
+            );
+        })
+        .catch(error => {
+            // this.error = error;
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Error to save Products to Quote!!',
+                    message: (error),
+                    variant: 'error',
+                    // mode:'sticky',
+                }),
+            );     
+        })
+
     }
 
     handleSortdata(event) {
