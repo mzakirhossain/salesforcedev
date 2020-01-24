@@ -3,15 +3,15 @@ import {ShowToastEvent} from 'lightning/platformShowToastEvent';
 import processCSVFile from '@salesforce/apex/ImpcsvQuoteLIController.processCSVFile';
 
 /* eslint-disable no-console */
- /* eslint-disable no-alert */
+/* eslint-disable no-alert */
 
 const columns = [
+    { label: 'Status', fieldName: 'STATUS',    cellAttributes: {class: { fieldName: 'StatusCSSClass' }, iconName: {fieldName: "Statusicon",iconPosition: "left"},},    sortable: "true",type:'text'},
     { label: 'Item Part Id', fieldName: 'ITEM_PART_ID', sortable: "true"}, 
     { label: 'Product Name', fieldName: 'ITEM_DESC', sortable: "true" },
-    { label: 'Quantity', fieldName: 'ITEM_QTY', sortable: "true", type:'number'},
+    { label: 'Quantity', fieldName: 'ITEM_QTY', sortable: "true"},
     { label: 'Unit', fieldName: 'ITEM_UNIT', sortable: "true"}, 
-    { label: 'Unit Price', fieldName: 'SELL', sortable: "true", type:'number'},
-    { label: 'Status', fieldName: 'STATUS', sortable: "true"}
+    { label: 'Unit Price', fieldName: 'SELL', sortable: "true"}
 ];
 
 export default class ImpcsvQuoteLI extends LightningElement {
@@ -50,7 +50,7 @@ export default class ImpcsvQuoteLI extends LightningElement {
 
             let resultArr =result;            
             let objSearch = null; 
-            objSearch = resultArr.find(o => o.STATUS === 'No Product Found');            
+            objSearch = resultArr.find(o => o.STATUStext === 'No-Product-Found');            
             // window.console.log('dataresult obj===> '+JSON.stringify(objSearch));
              
             // window.console.log('dataresult obj length===> '+Object.entries(objSearch).length);
@@ -60,7 +60,7 @@ export default class ImpcsvQuoteLI extends LightningElement {
                 this.isSaveIgnoreButton="true";
                 this.dispatchEvent(
                     new ShowToastEvent({
-                        title: 'Warning, Some products are not MATCHED!!',
+                        title: 'Warning, Some products line contains error or are not MATCHED!!',
                         message: 'Please Retry or Save with ignore those products.!!',
                         variant: 'warning',
                         // mode:'sticky',
@@ -121,7 +121,10 @@ export default class ImpcsvQuoteLI extends LightningElement {
                 }),
             );     
         })
-
+    }
+    
+    handleRetry(event) {
+        this.data = undefined;
     }
 
     handleSortdata(event) {

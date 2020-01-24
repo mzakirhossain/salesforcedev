@@ -8,7 +8,15 @@ public with sharing class ImpcsvQuoteLIController {
         @AuraEnabled public String SELL {get;set;}
         @AuraEnabled public String STATUS {get;set;}
         @AuraEnabled public String Product2Id {get;set;}
+
+        @AuraEnabled public String STATUStext {get;set;}
+
+        @AuraEnabled public String StatusCSSClass {get;set;}
+        @AuraEnabled public String Statusicon {get;set;}
+
+        
     }
+
     @AuraEnabled
     public static list<WCcsvQL> processCSVFile(Id idContentDocument,Id recordId,String isimportcsv){
         list<WCcsvQL> wclstcsvQL = new list<WCcsvQL>();
@@ -22,7 +30,8 @@ public with sharing class ImpcsvQuoteLIController {
                 ContentVersion objVersion = [SELECT Id, VersionData FROM ContentVersion WHERE ContentDocumentId =:idContentDocument];
                 // split the file data
                 list<String> lstCSVLines = objVersion.VersionData.toString().split('\n');
-
+                Decimal qnty;
+                Decimal unitprice;
                 for(Integer i = 1; i < lstCSVLines.size(); i++){
                     WCcsvQL objCsvQL = new WCcsvQL();
 
@@ -33,21 +42,33 @@ public with sharing class ImpcsvQuoteLIController {
                         objCsvQL.ITEM_DESC = csvRowData[2];
                         objCsvQL.ITEM_QTY = csvRowData[3];
                         objCsvQL.ITEM_UNIT = csvRowData[4];
-                        objCsvQL.SELL = csvRowData[10];
-                        
-                            try {
+                        objCsvQL.SELL = csvRowData[10];       
+
+                          try {                                         
+                            qnty=Decimal.valueOf(csvRowData[3]);
+                            unitprice = Decimal.valueOf(csvRowData[10]);
+
                                 String Product2 = [select id from Product2 where Vendor_Part__c =: csvRowData[1]].Id;
                                 String PricebookEntryId = [select id from PricebookEntry where Product2Id =: Product2].Id;                                        
 
                                     if (!String.isBlank(Product2) && !String.isBlank(PricebookEntryId)){                                    
-                                        objCsvQL.STATUS = 'Matched';
+                                        objCsvQL.STATUS = 'Success';
                                         objCsvQL.Product2Id = Product2;
-
+                                        objCsvQL.STATUStext = 'Matched';
+                                        objCsvQL.Statusicon = 'action:approval';  
+                                        objCsvQL.StatusCSSClass = 'slds-text-color_success';                                                                                
                                     }else {
-                                        objCsvQL.STATUS = 'No Product Found';
+                                        objCsvQL.STATUS = 'Failed';
+                                        objCsvQL.STATUStext = 'No-Product-Found';
+                                        objCsvQL.Statusicon = 'action:close';     
+                                        objCsvQL.StatusCSSClass = 'slds-text-color_error';  
                                     }
                                 } catch (Exception ex) {
-                                    objCsvQL.STATUS = 'No Product Found';
+                                        objCsvQL.STATUS = 'Failed';
+                                        objCsvQL.STATUStext = 'No-Product-Found';
+                                        objCsvQL.Statusicon = 'action:close';                
+                                        objCsvQL.StatusCSSClass = 'slds-text-color_error';  
+                                    System.debug('Exception csv import soql: '+ex.getMessage());                                    
                                 }
                         wclstcsvQL.add(objCsvQL);
                     }
@@ -93,8 +114,9 @@ public with sharing class ImpcsvQuoteLIController {
                                         quotelineitemObj.Product2Id = Product2;
                                         quotelineitemObj.PricebookEntryId = [select id from PricebookEntry where Product2Id =: Product2].Id;                                        
 
-                                        lstQL.add(quotelineitemObj);
-
+                                        if (!String.isBlank(quotelineitemObj.PricebookEntryId)){                                    
+                                            lstQL.add(quotelineitemObj);
+                                        }
                                     }
                                 } catch (Exception ex) {    
                                     System.debug('Exception while adding product in QL list: '+ex.getMessage());
