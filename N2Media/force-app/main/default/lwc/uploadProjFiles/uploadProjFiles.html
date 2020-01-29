@@ -1,0 +1,28 @@
+<template>
+    <lightning-card icon-name="custom:custom57" title='Upload project/s permits and plats files'>
+
+            <div class="slds-clearfix">
+                <div class="slds-float_left">
+                    <lightning-file-upload 
+                                        accept={acceptedFormats} 
+                                        label="Upload Permits File"                                          
+                                        onuploadfinished={PermitsUploadFinished} 
+                                        record-id={recordId}                                   
+                                        ></lightning-file-upload>
+                </div>
+            </div>
+            <br/>
+            <div class="slds-clearfix">
+                <div class="slds-float_left">
+                    <lightning-file-upload  accept={acceptedFormats} 
+                                        label="Upload Plats File"                                        
+                                        onuploadfinished={PlatssUploadFinished} 
+                                        record-id={recordId}                                   
+                                        ></lightning-file-upload>
+                </div>
+            </div>
+        <div if:true={error}>
+            {error}
+        </div><br/>
+    </lightning-card>
+</template>
